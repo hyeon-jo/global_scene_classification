@@ -64,9 +64,8 @@ class RCNN_baseline(BaseModel):
             network = vgg.conv_old()
 
         with tf.variable_scope('reshape', reuse=reuse):
-            #afterWidth = int(network.get_shape()[1])
-            #afterChannel = int(network.get_shape()[-1])
-            network = tf.reshape(network, [-1, self.input_frames, 4096])# afterWidth * afterWidth * afterChannel]) for RCNN_Baseline_0527
+
+            network = tf.reshape(network, [-1, self.input_frames, 4096])
 
         with tf.variable_scope('mainRNN', reuse=reuse):
             network= self.build_RNN(network,reuse)
@@ -77,7 +76,7 @@ class RCNN_baseline(BaseModel):
 
         cost = tf.reduce_mean(output)
 
-        return dict(prediction=network, loss=cost, images=None, attention =None)#, vgg=vgg)
+        return dict(prediction=network, loss=cost, images=None, attention =None)
 
 
 class ResNetBaseline(RCNN_baseline):

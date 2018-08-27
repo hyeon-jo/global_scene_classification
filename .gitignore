@@ -102,3 +102,17 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# tfrecord
+*.ftrecords
+*.jpg
+*.avi
+/database/sports/
+/database/ballsports/
+/database/pattern/
+/database/panning/
+database/complex/
+/database/animation/
+/database/complex/
+/database/outdoor/
+/database/

@@ -9,7 +9,7 @@ DATA_FOLD_PATH = None
 EVAL_SAVE_FOLDER = './results'
 
 NETWORK = resnet()
-MODEL_NETWORK = cnn.ResNetBaseline()#RCNN_baseline()#ResNetBaseline()#Conv3DModel()#
+MODEL_NETWORK = cnn.ResNetBaseline()
 
 TRAIN_SET_RATE = 0.8
 VALID_SET_RATE = 0.1
