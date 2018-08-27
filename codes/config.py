@@ -1,7 +1,6 @@
 
 import tensorflow as tf
 import net.cnn as cnn
-from net.vggnet.vgg16 import vgg16
 from net.resnet50 import resnet
 
 NUM_GPUS = int(4)
