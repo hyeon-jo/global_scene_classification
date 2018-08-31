@@ -3,7 +3,7 @@ import tensorflow as tf
 import net.cnn as cnn
 from net.resnet50 import resnet
 
-NUM_GPUS = int(4)
+NUM_GPUS = int(1)
 DATA_FOLD_PATH = None
 
 EVAL_SAVE_FOLDER = './results'
@@ -15,7 +15,7 @@ TRAIN_SET_RATE = 0.8
 VALID_SET_RATE = 0.1
 TEST_SET_RATE  = 0.2
 
-BATCH_SIZE = int(16)
+BATCH_SIZE = int(4)
 IMAGE_WIDTH = int(224)          # need to change the values in cnn.py
 IMAGE_HEIGHT = int(224)         # need to change the values in cnn.py
 IMAGE_CHANNEL = int(3)          # need to change the values in cnn.py
