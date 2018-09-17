@@ -357,7 +357,7 @@ class Trainer:
         # bar.finish()
         # fout.close()
 
-    def run_train(self, data_manager, test_data, model_save_path, sample_save_path, mode):
+    def run_train(self, data_manager, test_data, model_save_path, sample_save_path):
         session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
         train_start_time = time.time()
         with tf.device('/cpu:0'), session.as_default():
