@@ -15,7 +15,7 @@ TRAIN_SET_RATE = 0.8
 VALID_SET_RATE = 0.1
 TEST_SET_RATE  = 0.2
 
-BATCH_SIZE = int(16)
+BATCH_SIZE = int(8)
 IMAGE_WIDTH = int(224)          # need to change the values in cnn.py
 IMAGE_HEIGHT = int(224)         # need to change the values in cnn.py
 IMAGE_CHANNEL = int(3)          # need to change the values in cnn.py
@@ -26,9 +26,13 @@ NUM_OF_CLASS = int(8)
 EPOCH = int((FILE_READ_LIMIT * TRAIN_SET_RATE) / BATCH_SIZE * NUM_OF_CLASS)
 
 MODEL_SAVE_FOLDER = '/media/sdc1/hyeon/model_save/'
-MODEL_SAVE_NAME = 'ResNet_0821_30frames'#'ResNet_0720_scratch'#'ResNet_0609_scratch'#RCNN_0609_scratch'#'Resnet_0601'
-MODEL_SAVE_INTERVAL = int(EPOCH * 5)#575)#350)#560)                            # 7 class train: 4595, test: 1005
+MODEL_SAVE_NAME = 'stacked_lstm_0917'#'ResNet_0720_scratch'#'ResNet_0609_scratch'#RCNN_0609_scratch'#'Resnet_0601'
+MODEL_SAVE_INTERVAL = int(EPOCH * 5)                            # 7 class train: 4595, test: 1005
 TRAINABLE = False
+
+# ResNet_0609_scratch : BATCH_SIZE=8, FRAMES=60, NUM_OF_CLASS=7
+# ResNet_0720_scratch : BATCH_SIZE=32, FRAMES=15, NUM_OF_CLASS=8
+# ResNet_0821_30frames : BATCH_size=16, FRAMES=30, NUM_OF_CLASS=8
 
 LABEL_MAP={'sports':0, 'animation':1, 'ballsports':2, 'complex':3, 'outdoor':4, 'pattern':5, 'graphic':6, 'panning':7}
 REV_MAP  ={0:'sports', 1:'animation', 2:'ballsports', 3:'complex', 4:'outdoor', 5:'pattern', 6:'graphic', 7:'panning'}

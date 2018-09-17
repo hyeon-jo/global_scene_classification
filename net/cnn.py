@@ -6,7 +6,7 @@ import tensorflow as tf
 IMAGE_FRAME   =  30
 IMAGE_HEIGHT  = 224
 IMAGE_WIDTH   = 224
-IMAGE_CHANNEL =   3
+IMAGE_CHANNEL =   32
 CLASS_NUM     =   8
 
 """
@@ -252,7 +252,7 @@ class ResNetBaseline(RCNN_baseline):
 
             print(
             'nextStep')
-            forNum = (initLen - filterSize) // stride + 1
+            forNum = (initLen - filterSize) / stride + 1
             with tf.variable_scope("gru_layer2_" + str(initLen), reuse=reuse):
 
                 cell_1 = tf.nn.rnn_cell.BasicLSTMCell(num_units=self.hiddenDim, state_is_tuple=True,

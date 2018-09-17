@@ -310,51 +310,52 @@ class Trainer:
         print('[Top 2 ACC] ACC: %.4f' % (count_top2 / len(test_vids)))
         print('[Top 3 ACC] ACC: %.4f' % (count_top3 / len(test_vids)))
 
-        bar = Bar('Processing', max=len(test_vids), suffix='%(index)d/%(max)d - %(percent).1f%% - %(eta)ds')
-
-        false_save_path = sample_save_path + '/sample_test'
-        out_data = np.reshape(out_data, -1)
-        softmax_val = np.reshape(softmax_val, (-1, 2))
-
-        os.makedirs(false_save_path + '/original', exist_ok=True)
-        for j in range(config.NUM_OF_CLASS):
-            for k in range(config.NUM_OF_CLASS):
-                dir_name = false_save_path + '/' + config.REV_MAP[j] + '/' + config.REV_MAP[k]
-                os.makedirs(dir_name, exist_ok=True)
-
-        fout = open(false_save_path + '/pred.txt', 'w')
-        false_alarm = [0] * config.NUM_OF_CLASS ** 2
-        false_alarm = np.reshape(false_alarm, (config.NUM_OF_CLASS, config.NUM_OF_CLASS))
-
-        fourcc = cv2.VideoWriter_fourcc(*'DIVX')
-        for index, video in enumerate(test_vids):
-            bar.next()
-            k = np.argmax(test_labels[index])
-            video_name = false_save_path + '/' + config.REV_MAP[k] \
-                         + '/' + config.REV_MAP[out_data[index]] \
-                         + '/' + str(softmax_val[index][0]) \
-                         + '_' + str(softmax_val[index][1]) \
-                         + '_' + str(index) + '.avi'
-            writer = cv2.VideoWriter(video_name, fourcc, config.IMAGE_FRAMES, (config.IMAGE_WIDTH, config.IMAGE_HEIGHT))
-            for frame in video:
-                writer.write(frame)
-            false_alarm[k][out_data[index]] += 1
-            writer.release()
-            video_name = false_save_path + '/original/' + str(index) + '.avi'
-            writer = cv2.VideoWriter(video_name, fourcc, config.IMAGE_FRAMES, (config.IMAGE_WIDTH, config.IMAGE_HEIGHT))
-            for frame in video:
-                writer.write(frame)
-            writer.release()
-
-        for i in range(config.NUM_OF_CLASS):
-            fout.write('%s ' % config.REV_MAP[i])
-            fout.write('\n')
-            for j in range(config.NUM_OF_CLASS):
-                fout.write('%d ' % false_alarm[i][j])
-            fout.write('\n')
-
-        bar.finish()
-        fout.close()
+        return acc_val
+        # bar = Bar('Processing', max=len(test_vids), suffix='%(index)d/%(max)d - %(percent).1f%% - %(eta)ds')
+        #
+        # false_save_path = sample_save_path + '/sample_test'
+        # out_data = np.reshape(out_data, -1)
+        # softmax_val = np.reshape(softmax_val, (-1, 2))
+        #
+        # os.makedirs(false_save_path + '/original', exist_ok=True)
+        # for j in range(config.NUM_OF_CLASS):
+        #     for k in range(config.NUM_OF_CLASS):
+        #         dir_name = false_save_path + '/' + config.REV_MAP[j] + '/' + config.REV_MAP[k]
+        #         os.makedirs(dir_name, exist_ok=True)
+        #
+        # fout = open(false_save_path + '/pred.txt', 'w')
+        # false_alarm = [0] * config.NUM_OF_CLASS ** 2
+        # false_alarm = np.reshape(false_alarm, (config.NUM_OF_CLASS, config.NUM_OF_CLASS))
+        #
+        # fourcc = cv2.VideoWriter_fourcc(*'DIVX')
+        # for index, video in enumerate(test_vids):
+        #     bar.next()
+        #     k = np.argmax(test_labels[index])
+        #     video_name = false_save_path + '/' + config.REV_MAP[k] \
+        #                  + '/' + config.REV_MAP[out_data[index]] \
+        #                  + '/' + str(softmax_val[index][0]) \
+        #                  + '_' + str(softmax_val[index][1]) \
+        #                  + '_' + str(index) + '.avi'
+        #     writer = cv2.VideoWriter(video_name, fourcc, config.IMAGE_FRAMES, (config.IMAGE_WIDTH, config.IMAGE_HEIGHT))
+        #     for frame in video:
+        #         writer.write(frame)
+        #     false_alarm[k][out_data[index]] += 1
+        #     writer.release()
+        #     video_name = false_save_path + '/original/' + str(index) + '.avi'
+        #     writer = cv2.VideoWriter(video_name, fourcc, config.IMAGE_FRAMES, (config.IMAGE_WIDTH, config.IMAGE_HEIGHT))
+        #     for frame in video:
+        #         writer.write(frame)
+        #     writer.release()
+        #
+        # for i in range(config.NUM_OF_CLASS):
+        #     fout.write('%s ' % config.REV_MAP[i])
+        #     fout.write('\n')
+        #     for j in range(config.NUM_OF_CLASS):
+        #         fout.write('%d ' % false_alarm[i][j])
+        #     fout.write('\n')
+        #
+        # bar.finish()
+        # fout.close()
 
     def run_train(self, data_manager, test_data, model_save_path, sample_save_path, mode):
         session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
@@ -384,6 +385,7 @@ class Trainer:
             threads = tf.train.start_queue_runners(coord=coord)
 
             epoch_acc = []
+            test_acc = 0
             while session.run(self.global_step) < config.TRAIN_MAX_STEPS:
 
                 step_index = int(session.run(self.global_step))
@@ -424,15 +426,22 @@ class Trainer:
 
                 if step_index % config.EPOCH == 0:
                     print('[Epoch ACC: %.4f]' % np.mean(epoch_acc))
-                    epoch_acc.clear()
 
-                if step_index % config.MODEL_SAVE_INTERVAL == 0:
-                    saver.save(session, os.path.join(model_save_path, 'tr'), global_step=step_index)
+                    temp_acc_save = self.run_test(session, sample_save_path)
+                    if step_index / config.EPOCH >= 90:
+                        if  test_acc < temp_acc_save:
+                            test_acc = temp_acc_save
+                            saver.save(session, os.path.join(model_save_path,'tr'), global_step=step_index)
+
+                    elif step_index % config.MODEL_SAVE_INTERVAL == 0:
+                        saver.save(session, os.path.join(model_save_path, 'tr'), global_step=step_index)
+
+                    epoch_acc.clear()
 
             # export results
             # self.export_results(session, data_manager, True, sample_save_path)
             # self.export_results(session, test_data, False, sample_save_path)
-            self.run_test(session, sample_save_path)
+            # self.run_test(session, sample_save_path)
 
             coord.request_stop()
             coord.join(threads)
