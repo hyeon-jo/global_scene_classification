@@ -94,7 +94,7 @@ class ResNetBaseline(RCNN_baseline):
         self.hiddenDim = hiddenDim
 
     def frame_weights(self, network):
-        network = tflearn.conv_2d(network, self.input_frames, filter_size=[1, 1],
+        network = tflearn.conv_1d(network, self.input_frames, filter_size=[1],
                                  strides=1, padding='SAME', activation='linear', bias=False, weights_init='xavier')
         return network
 
