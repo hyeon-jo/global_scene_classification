@@ -105,12 +105,12 @@ class ResNetBaseline(RCNN_baseline):
         with tf.variable_scope('reshape', reuse=reuse):
             network = tf.reshape(network['global_pool'], [-1, self.input_frames, 2048])#tf.reshape(network[1]['global_pool'], [-1, self.input_frames, 2048])                               #[-1, self.input_frames, 512] for Resnet_0601
 
+        with tf.variable_scope('frameWeights', reuse=reuse):
+            network = self.frame_weights(network)
+
         with tf.variable_scope('mainRNN', reuse=reuse):
             network = self.build_RNN(network, reuse)
             network = custom_fc_layers(network, CLASS_NUM, reuse)
-
-        with tf.variable_scope('frameWeights', reuse=reuse):
-            network = self.frame_weights(network)
 
         with tf.variable_scope("mainRegression", reuse=reuse):
             softmax = tf.nn.softmax(logits=network)
