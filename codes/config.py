@@ -26,7 +26,7 @@ NUM_OF_CLASS = int(8)
 EPOCH = int((FILE_READ_LIMIT * TRAIN_SET_RATE) / BATCH_SIZE * NUM_OF_CLASS)
 
 MODEL_SAVE_FOLDER = '/media/sdc1/hyeon/model_save/'
-MODEL_SAVE_NAME = 'ResNet_0821_30frames'#'ResNet_0720_scratch'#'ResNet_0609_scratch'#RCNN_0609_scratch'#'Resnet_0601'
+MODEL_SAVE_NAME = 'ResNet_0920_30frames'#'ResNet_0720_scratch'#'ResNet_0609_scratch'#RCNN_0609_scratch'#'Resnet_0601'
 MODEL_SAVE_INTERVAL = int(EPOCH * 5)#575)#350)#560)                            # 7 class train: 4595, test: 1005
 TRAINABLE = False
 

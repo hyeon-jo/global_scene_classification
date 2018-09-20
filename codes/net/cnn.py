@@ -2,6 +2,7 @@
 from common import BaseModel
 import numpy as np
 import tensorflow as tf
+import tflearn
 
 IMAGE_FRAME   =  30
 IMAGE_HEIGHT  = 224
@@ -92,6 +93,11 @@ class ResNetBaseline(RCNN_baseline):
         self.vectorSize = input_height * input_width * input_frames
         self.hiddenDim = hiddenDim
 
+    def frame_weights(self, network):
+        network = tflearn.conv_2d(network, self.input_frames, filter_size=[1, 1],
+                                 strides=1, padding='SAME', activation='linear', bias=False, weights_init='xavier')
+        return network
+
     def build_graph(self, input, expected, reuse, resnet):
         input = tf.reshape(input, [-1, self.input_height, self.input_width, self.input_channels])
 
@@ -102,6 +108,9 @@ class ResNetBaseline(RCNN_baseline):
         with tf.variable_scope('mainRNN', reuse=reuse):
             network = self.build_RNN(network, reuse)
             network = custom_fc_layers(network, CLASS_NUM, reuse)
+
+        with tf.variable_scope('frameWeights', reuse=reuse):
+            network = self.frame_weights(network)
 
         with tf.variable_scope("mainRegression", reuse=reuse):
             softmax = tf.nn.softmax(logits=network)
