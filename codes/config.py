@@ -3,7 +3,7 @@ import tensorflow as tf
 import net.cnn as cnn
 from net.resnet50 import resnet
 
-NUM_GPUS = int(1)
+NUM_GPUS = int(4)
 DATA_FOLD_PATH = None
 
 EVAL_SAVE_FOLDER = './results'
@@ -12,10 +12,9 @@ NETWORK = resnet()
 MODEL_NETWORK = cnn.ResNetBaseline()
 
 TRAIN_SET_RATE = 0.8
-VALID_SET_RATE = 0.1
 TEST_SET_RATE  = 0.2
 
-BATCH_SIZE = int(4)
+BATCH_SIZE = int(16)
 IMAGE_WIDTH = int(224)          # need to change the values in cnn.py
 IMAGE_HEIGHT = int(224)         # need to change the values in cnn.py
 IMAGE_CHANNEL = int(3)          # need to change the values in cnn.py
@@ -26,7 +25,7 @@ NUM_OF_CLASS = int(8)
 EPOCH = int((FILE_READ_LIMIT * TRAIN_SET_RATE) / BATCH_SIZE * NUM_OF_CLASS)
 
 MODEL_SAVE_FOLDER = '/media/sdc1/hyeon/model_save/'
-MODEL_SAVE_NAME = 'ResNet_0821_30frames'#'ResNet_0720_scratch'#'ResNet_0609_scratch'#RCNN_0609_scratch'#'Resnet_0601'
+MODEL_SAVE_NAME = 'ResNet_0921_30frames'#'ResNet_0720_scratch'#'ResNet_0609_scratch'#RCNN_0609_scratch'#'Resnet_0601'
 MODEL_SAVE_INTERVAL = int(EPOCH * 5)#575)#350)#560)                            # 7 class train: 4595, test: 1005
 TRAINABLE = False
 

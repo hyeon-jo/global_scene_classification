@@ -54,7 +54,7 @@ class Trainer:
             self.all_losses = []
             self.all_outputs = []
             self.all_towers = []
-            self.softmaxs = []
+            self.softmax = []
             self.network = config.NETWORK
 
             self.global_step = tf.Variable(0, trainable=False, name='global_step')
@@ -84,7 +84,7 @@ class Trainer:
 
             self.global_loss = tf.reduce_mean(self.all_losses)
 
-            self.softmax_val = tf.concat(self.softmaxs, axis=0)
+            self.softmax = tf.concat(self.softmax, axis=0)
             self.is_output = tf.argmax(tf.concat(self.all_outputs, axis=0), 1)
             self.is_ground = tf.argmax(tf.concat(self.tower_labels, axis=0), 1)
             self.is_correct = tf.equal(self.is_output, self.is_ground)
@@ -119,7 +119,7 @@ class Trainer:
             self.all_losses.append(loss)
             self.all_outputs.append(output)
             self.all_gradients.append(gradients)
-            self.softmaxs.append(softmax)
+            self.softmax.append(softmax)
             tf.get_variable_scope().reuse_variables()
 
     def get_learning_rate(self, step_index=0):
@@ -174,7 +174,7 @@ class Trainer:
                 fetches=[self.is_correct,
                          self.global_acc,
                          self.is_output,
-                         self.softmax_val],
+                         self.softmax],
                 feed_dict={
                     self.input: X,
                     self.label: Y,
@@ -238,123 +238,34 @@ class Trainer:
         bar.finish()
         fout.close()
 
-    def run_test(self, session, sample_save_path):
-        path = '/media/sda1/hyeon/vd_proj/database/global_30frames_2/tfrecord/test'
-        test_vids = []
-        test_labels = []
-
-        pred_labels = []
-        tot_acc = []
-        out_data = []
-        softmax_val = []
-
-        pred_rank = []
-
-        # loop = int((config.FILE_READ_LIMIT * config.NUM_OF_CLASS / config.BATCH_SIZE) - config.EPOCH)
-
-        for root, subdirs, files in os.walk(path):
-            root_split = root.split('/')
-            if root_split[-1] == 'out':
-                for file_name in files:
-                    file_loc = os.path.join(root, file_name)
-                    video_stream = cv2.VideoCapture(file_loc)
-                    video = []
-                    while(True):
-                        ret, frame = video_stream.read()
-                        if ret == False:
-                            break
-                        video.append(frame)
-                    test_vids.append(video)
-
-                    temp = [0] * config.NUM_OF_CLASS
-                    temp[config.LABEL_MAP[root_split[-2]]] = 1
-                    test_labels.append(temp)
-
-        loop = len(test_vids) // config.BATCH_SIZE
+    def run_test(self, session, test_data):
+        loop = config.FILE_READ_LIMIT * config.TEST_SET_RATE / config.BATCH_SIZE
+        test_start_time = time.time()
+        total_acc = []
         for i in range(loop):
-            idx = i * config.BATCH_SIZE
-            X = test_vids[idx : idx + config.BATCH_SIZE]
-            Y = test_labels[idx : idx + config.BATCH_SIZE]
-
-            pred, acc, out, softmax = session.run(
-                fetches=[self.is_correct,
-                         self.global_acc,
-                         self.is_output,
-                         self.softmax_val],
+            X, Y = session.run(test_data)
+            X = np.reshape(X, [-1, config.IMAGE_FRAMES, config.IMAGE_WIDTH, config.IMAGE_HEIGHT, config.IMAGE_CHANNEL])
+            Y = tf.one_hot(Y, depth=config.NUM_OF_CLASS)
+            softmax, acc = session.run(
+                fetches=[
+                    self.softmax,
+                    self.global_acc
+                ],
                 feed_dict={
                     self.input: X,
                     self.label: Y,
-                    self.learning_rate: .0})
-            pred_labels.append(pred)
-            tot_acc.append(acc)
-            out_data.append(out)
-            for j in range(config.BATCH_SIZE):
-                softmax_val.append([softmax[j][out[j]], softmax[j][np.argmax(Y[j])]])
-                rank = sorted(softmax[j], reverse=True)
-                pred_rank.append(rank.index(softmax[j][np.argmax(Y[j])]))
+                    self.learning_rate: 0
+                }
+            )
+            total_acc.append(acc)
 
-        acc_val = np.mean(tot_acc)
-        count_top1 = 0
-        count_top2 = 0
-        count_top3 = 0
+        timecost = time.time() - test_start_time
+        accuracy = np.mean(total_acc)
+        print('TEST ACC: %.4f, Time: %.2f' % (accuracy, timecost))
 
-        for val in pred_rank:
-            if val < 1:
-                count_top1 += 1
-            if val < 2:
-                count_top2 += 1
-            if val < 3:
-                count_top3 += 1
+        return accuracy
 
-        print('[Top 1 ACC] ACC: %.4f' % acc_val)
-        print('[Top 2 ACC] ACC: %.4f' % (count_top2 / len(test_vids)))
-        print('[Top 3 ACC] ACC: %.4f' % (count_top3 / len(test_vids)))
 
-        bar = Bar('Processing', max=len(test_vids), suffix='%(index)d/%(max)d - %(percent).1f%% - %(eta)ds')
-
-        false_save_path = sample_save_path + '/sample_test'
-        out_data = np.reshape(out_data, -1)
-        softmax_val = np.reshape(softmax_val, (-1, 2))
-
-        os.makedirs(false_save_path + '/original', exist_ok=True)
-        for j in range(config.NUM_OF_CLASS):
-            for k in range(config.NUM_OF_CLASS):
-                dir_name = false_save_path + '/' + config.REV_MAP[j] + '/' + config.REV_MAP[k]
-                os.makedirs(dir_name, exist_ok=True)
-
-        fout = open(false_save_path + '/pred.txt', 'w')
-        false_alarm = [0] * config.NUM_OF_CLASS ** 2
-        false_alarm = np.reshape(false_alarm, (config.NUM_OF_CLASS, config.NUM_OF_CLASS))
-
-        fourcc = cv2.VideoWriter_fourcc(*'DIVX')
-        for index, video in enumerate(test_vids):
-            bar.next()
-            k = np.argmax(test_labels[index])
-            video_name = false_save_path + '/' + config.REV_MAP[k] \
-                         + '/' + config.REV_MAP[out_data[index]] \
-                         + '/' + str(softmax_val[index][0]) \
-                         + '_' + str(softmax_val[index][1]) \
-                         + '_' + str(index) + '.avi'
-            writer = cv2.VideoWriter(video_name, fourcc, config.IMAGE_FRAMES, (config.IMAGE_WIDTH, config.IMAGE_HEIGHT))
-            for frame in video:
-                writer.write(frame)
-            false_alarm[k][out_data[index]] += 1
-            writer.release()
-            video_name = false_save_path + '/original/' + str(index) + '.avi'
-            writer = cv2.VideoWriter(video_name, fourcc, config.IMAGE_FRAMES, (config.IMAGE_WIDTH, config.IMAGE_HEIGHT))
-            for frame in video:
-                writer.write(frame)
-            writer.release()
-
-        for i in range(config.NUM_OF_CLASS):
-            fout.write('%s ' % config.REV_MAP[i])
-            fout.write('\n')
-            for j in range(config.NUM_OF_CLASS):
-                fout.write('%d ' % false_alarm[i][j])
-            fout.write('\n')
-
-        bar.finish()
-        fout.close()
 
     def run_train(self, data_manager, test_data, model_save_path, sample_save_path):
         session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
@@ -365,7 +276,6 @@ class Trainer:
             if ckpt and ckpt.model_checkpoint_path and not config.TRAIN_OVERWRITE:
                 print(
                 'Restore trained model from ' + ckpt.model_checkpoint_path)
-                # model_name = model_save_path + '/tr-15700'
                 saver.restore(session, ckpt.model_checkpoint_path)
             else:
                 print(
@@ -392,14 +302,9 @@ class Trainer:
                 step_start_time = time.time()
 
                 # read input data from data manager
-                input = session.run([data_manager])
-                X = np.reshape(input[0][0], [-1, config.IMAGE_FRAMES, config.IMAGE_WIDTH, config.IMAGE_HEIGHT, config.IMAGE_CHANNEL])     # 5D tensor (?, 60, 64, 64, 1)
-                label = input[0][1]
-                Y = []
-                for i, value in enumerate(label):
-                    temp = [0] * config.NUM_OF_CLASS
-                    temp[value] = 1
-                    Y.append(temp)
+                X, Y = session.run(data_manager)
+                X = np.reshape(X, [-1, config.IMAGE_FRAMES, config.IMAGE_WIDTH, config.IMAGE_HEIGHT, config.IMAGE_CHANNEL])     # 5D tensor (?, 60, 64, 64, 1)
+                Y = tf.one_hot(Y, depth=config.NUM_OF_CLASS)
                 _, loss, acc, summary = session.run(
                     fetches=[
                         self.train_step,
@@ -420,14 +325,22 @@ class Trainer:
                 '[Step %5d] LR: %.5E, LOSS: %.5E, ACC: %.4f, Time: %.7f sec' % (step_index, lr, loss, acc, timecost))
 
                 epoch_acc.append(acc)
+                test_acc = 0
                 summary_writer.add_summary(summary, global_step=step_index)
 
                 if step_index % config.EPOCH == 0:
                     print('[Epoch ACC: %.4f]' % np.mean(epoch_acc))
-                    epoch_acc.clear()
 
-                if step_index % config.MODEL_SAVE_INTERVAL == 0:
-                    saver.save(session, os.path.join(model_save_path, 'tr'), global_step=step_index)
+                    temp_acc_save = self.run_test(session, test_data)
+                    if step_index / config.EPOCH >= 90:
+                        if  test_acc < temp_acc_save:
+                            test_acc = temp_acc_save
+                            saver.save(session, os.path.join(model_save_path,'tr'), global_step=step_index)
+
+                    elif step_index % config.MODEL_SAVE_INTERVAL == 0:
+                        saver.save(session, os.path.join(model_save_path, 'tr'), global_step=step_index)
+
+                    epoch_acc.clear()
 
             # export results
             # self.export_results(session, data_manager, True, sample_save_path)
