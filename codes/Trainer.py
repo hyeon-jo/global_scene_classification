@@ -239,13 +239,14 @@ class Trainer:
         fout.close()
 
     def run_test(self, session, test_data):
-        loop = config.FILE_READ_LIMIT * config.TEST_SET_RATE / config.BATCH_SIZE
+        loop = int(config.FILE_READ_LIMIT * config.TEST_SET_RATE // config.BATCH_SIZE)
+
         test_start_time = time.time()
         total_acc = []
         for i in range(loop):
             X, Y = session.run(test_data)
             X = np.reshape(X, [-1, config.IMAGE_FRAMES, config.IMAGE_WIDTH, config.IMAGE_HEIGHT, config.IMAGE_CHANNEL])
-            Y = tf.one_hot(Y, depth=config.NUM_OF_CLASS)
+            Y = session.run(tf.one_hot(Y, depth=config.NUM_OF_CLASS))
             softmax, acc = session.run(
                 fetches=[
                     self.softmax,
@@ -294,6 +295,7 @@ class Trainer:
             threads = tf.train.start_queue_runners(coord=coord)
 
             epoch_acc = []
+            test_acc = 0
             while session.run(self.global_step) < config.TRAIN_MAX_STEPS:
 
                 step_index = int(session.run(self.global_step))
@@ -304,7 +306,7 @@ class Trainer:
                 # read input data from data manager
                 X, Y = session.run(data_manager)
                 X = np.reshape(X, [-1, config.IMAGE_FRAMES, config.IMAGE_WIDTH, config.IMAGE_HEIGHT, config.IMAGE_CHANNEL])     # 5D tensor (?, 60, 64, 64, 1)
-                Y = tf.one_hot(Y, depth=config.NUM_OF_CLASS)
+                Y = session.run(tf.one_hot(Y, depth=config.NUM_OF_CLASS))
                 _, loss, acc, summary = session.run(
                     fetches=[
                         self.train_step,
@@ -325,14 +327,13 @@ class Trainer:
                 '[Step %5d] LR: %.5E, LOSS: %.5E, ACC: %.4f, Time: %.7f sec' % (step_index, lr, loss, acc, timecost))
 
                 epoch_acc.append(acc)
-                test_acc = 0
                 summary_writer.add_summary(summary, global_step=step_index)
 
                 if step_index % config.EPOCH == 0:
                     print('[Epoch ACC: %.4f]' % np.mean(epoch_acc))
 
-                    temp_acc_save = self.run_test(session, test_data)
-                    if step_index / config.EPOCH >= 90:
+                    if step_index // config.EPOCH >= 90:
+                        temp_acc_save = self.run_test(session, test_data)
                         if  test_acc < temp_acc_save:
                             test_acc = temp_acc_save
                             saver.save(session, os.path.join(model_save_path,'tr'), global_step=step_index)
