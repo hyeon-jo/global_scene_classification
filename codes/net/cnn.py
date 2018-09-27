@@ -3,11 +3,11 @@ from common import BaseModel
 import numpy as np
 import tensorflow as tf
 
-IMAGE_FRAME   =  30
-IMAGE_HEIGHT  = 224
-IMAGE_WIDTH   = 224
+IMAGE_FRAME   =  20
+IMAGE_HEIGHT  = 240
+IMAGE_WIDTH   = 320
 IMAGE_CHANNEL =   3
-CLASS_NUM     =   8
+CLASS_NUM     = 101
 
 """
 ****************************************************************************************************************************
@@ -105,7 +105,7 @@ class ResNetBaseline(RCNN_baseline):
 
         with tf.variable_scope("mainRegression", reuse=reuse):
             softmax = tf.nn.softmax(logits=network)
-            output = tf.nn.softmax_cross_entropy_with_logits(labels=expected, logits=network)#(logits=network)#_cross_entropy_with_logits(labels=expected, logits=network)
+            output = tf.nn.softmax_cross_entropy_with_logits_v2(labels=expected, logits=network)#(logits=network)#_cross_entropy_with_logits(labels=expected, logits=network)
 
         cost = tf.reduce_mean(output)
 
@@ -145,8 +145,6 @@ class ResNetBaseline(RCNN_baseline):
         if padding == 'None':
             nextTimeStepNum = (timeStep - filterSize) / stride + 1
             for i in range(nextTimeStepNum):
-                print(
-                x.get_shape())
                 sliceVector = tf.slice(x, [0, i * stride, 0], [-1, filterSize, -1])
                 if (i == 0):
 
@@ -178,8 +176,6 @@ class ResNetBaseline(RCNN_baseline):
                 # sliceSt= int(sliceSt)
                 sliceNum = int(sliceNum)
 
-                print(
-                "startX : %d endX : %d sliceNum : %d" % (startX, endX, sliceNum))
                 sliceVector = tf.slice(x, [0, sliceSt, 0], [-1, sliceNum, -1])
 
                 if (i == 0):
@@ -220,9 +216,6 @@ class ResNetBaseline(RCNN_baseline):
         return tf.reshape(input, [-1, int(x.get_shape()[2])])
 
     def ConvGRU(self, x, reuse):
-        print('init value')
-        print(
-        x.get_shape())
         filterSize = 3
         stride = 2
 
@@ -236,11 +229,6 @@ class ResNetBaseline(RCNN_baseline):
             x = tf.slice(x, [0, 5, 0], [-1, 15, -1])
             initLen = int(x.get_shape()[1])
 
-            print(
-            'caution vector')
-            print(
-            x.get_shape())
-
             ############CAUTION
 
             # print 'impossible timestep with filterSize : %d and stride : %d'%(filterSize,stride)
@@ -250,8 +238,6 @@ class ResNetBaseline(RCNN_baseline):
             if (initLen < filterSize):
                 break
 
-            print(
-            'nextStep')
             forNum = (initLen - filterSize) // stride + 1
             with tf.variable_scope("gru_layer2_" + str(initLen), reuse=reuse):
 
@@ -262,16 +248,9 @@ class ResNetBaseline(RCNN_baseline):
                 cell_2 = tf.nn.rnn_cell.BasicLSTMCell(num_units=self.hiddenDim, state_is_tuple=True,
                                                       activation=tf.tanh,
                                                       reuse=reuse)
-            print(
-            'fornum = %d' % (forNum))
+
             for i in range(forNum):
-                print(
-                x.get_shape())
                 sliceVector = tf.slice(x, [0, i * stride, 0], [-1, filterSize, -1])
-                print(
-                '--' + str(i))
-                print(
-                sliceVector.get_shape())
 
                 if (i == 0):
                     self.nextLayer = self.localRNN(sliceVector, True, cell_1, cell_2, "gru_layer2_" + str(initLen))

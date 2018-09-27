@@ -238,7 +238,7 @@ class Trainer:
         bar.finish()
         fout.close()
 
-    def run_test(self, session, sample_save_path):
+    def run_test(self, session):
         path = '/media/sda1/hyeon/vd_proj/database/global_30frames_2/tfrecord/test'
         test_vids = []
         test_labels = []
@@ -357,7 +357,7 @@ class Trainer:
         # bar.finish()
         # fout.close()
 
-    def run_train(self, data_manager, test_data, model_save_path, sample_save_path):
+    def run_train(self, data_manager, model_save_path):
         session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
         train_start_time = time.time()
         with tf.device('/cpu:0'), session.as_default():
@@ -394,14 +394,10 @@ class Trainer:
                 step_start_time = time.time()
 
                 # read input data from data manager
-                input = session.run([data_manager])
-                X = np.reshape(input[0][0], [-1, config.IMAGE_FRAMES, config.IMAGE_WIDTH, config.IMAGE_HEIGHT, config.IMAGE_CHANNEL])     # 5D tensor (?, 60, 64, 64, 1)
-                label = input[0][1]
-                Y = []
-                for i, value in enumerate(label):
-                    temp = [0] * config.NUM_OF_CLASS
-                    temp[value] = 1
-                    Y.append(temp)
+                X, Y = data_manager.next_batch()
+                print(np.shape(X))
+                X = np.reshape(X, [-1, config.IMAGE_FRAMES, config.IMAGE_HEIGHT, config.IMAGE_WIDTH, config.IMAGE_CHANNEL])
+                Y = session.run(tf.one_hot(Y, depth=config.NUM_OF_CLASS))
                 _, loss, acc, summary = session.run(
                     fetches=[
                         self.train_step,
@@ -415,6 +411,8 @@ class Trainer:
                         self.learning_rate: lr
                     }
                 )
+                del(X)
+                del(Y)
 
                 # print useful logs in your console
                 timecost = time.time() - step_start_time
@@ -427,8 +425,8 @@ class Trainer:
                 if step_index % config.EPOCH == 0:
                     print('[Epoch ACC: %.4f]' % np.mean(epoch_acc))
 
-                    temp_acc_save = self.run_test(session, sample_save_path)
                     if step_index / config.EPOCH >= 90:
+                        temp_acc_save = self.run_test(session)
                         if  test_acc < temp_acc_save:
                             test_acc = temp_acc_save
                             saver.save(session, os.path.join(model_save_path,'tr'), global_step=step_index)
