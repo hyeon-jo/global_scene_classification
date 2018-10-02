@@ -62,17 +62,25 @@ class DatasetReader():
                                   int(config.REV_IDX[video_file.split('/')[0]])])
             file_stream.close()
 
-        print(train_data[0])
-        print(test_data[0])
         self.trainset = train_data
         self.testset  = test_data
+
+    def random_crop(self, image, after_size=224):
+        size = np.shape(image)
+        height_rand = random.randrange(0, size[0]-after_size)
+        width_rand = random.randrange(0, size[1]-after_size)
+
+        ret = [e[width_rand:width_rand+after_size] for e in image]
+        ret = ret[height_rand:height_rand+after_size]
+
+        return ret
 
 
     def next_batch(self, is_train=True):
         if is_train and self.train_batch_pointer == 0:
             random.shuffle(self.trainset)
 
-        data  = []
+        data   = []
         labels = []
         for i in range(config.BATCH_SIZE):
             data_loc, label = self.trainset[self.train_batch_pointer] if is_train else self.testset[self.test_batch_pointer]
@@ -83,8 +91,8 @@ class DatasetReader():
                 ret, frame = video_stream.read()
                 if ret == False:
                     break
-
-                video.append(frame)
+                frame = np.resize(frame, [256, 256, 3])
+                video.append(self.random_crop(frame))
 
             choice = np.random.choice(len(video), config.IMAGE_FRAMES)
             datum = []
@@ -101,13 +109,13 @@ class DatasetReader():
                 if self.test_batch_pointer >= len(self.testset):
                     self.test_batch_pointer = 0
 
-        if np.shape(data) != (8, 20, 240, 320, 3):
-            print('[!] BATCH SIZE ERROR: ', np.shape(data))
-            print(np.shape(video))
-            with open('log.txt', 'w') as stream:
-                for e in data:
-                    for ee in e:
-                        stream.write(ee+'\n')
+        # if np.shape(data) != (8, 20, 240, 320, 3):
+        #     print('[!] BATCH SIZE ERROR: ', np.shape(data))
+        #     print(np.shape(video))
+        #     with open('log.txt', 'w') as stream:
+        #         for e in data:
+        #             for ee in e:
+        #                 stream.write(ee+'\n')
 
         video.clear()
         return data, labels

@@ -395,7 +395,6 @@ class Trainer:
 
                 # read input data from data manager
                 X, Y = data_manager.next_batch()
-                print(np.shape(X))
                 X = np.reshape(X, [-1, config.IMAGE_FRAMES, config.IMAGE_HEIGHT, config.IMAGE_WIDTH, config.IMAGE_CHANNEL])
                 Y = session.run(tf.one_hot(Y, depth=config.NUM_OF_CLASS))
                 _, loss, acc, summary = session.run(
